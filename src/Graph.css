@@ -1,0 +1,14 @@
+.graph {
+  min-height: 15rem;
+  cursor: grab;
+  flex-grow: 1;
+}
+
+.graph path {
+  fill: none;
+/*   stroke: #839496; */
+  stroke-width: 2000;
+/*   stroke-linecap: round; */
+/*   vector-effect: non-scaling-stroke; */
+  transform: scaleY(-1) translateY(-1px);
+}
