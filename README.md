@@ -39,6 +39,14 @@ It also implements a snapping behavior, whereby if the viewing range is scrolled
 ## TODO
 
 - Share TypeScript types for the metrics between the server/client
-- Graph ticks (time labels)
+- Refactor all styling with CSS-in-JS!
+- General code refactoring.. Graph() especially quite rough atm
+- Deploy to DigitalOcean
+- Enable linting
+- Mock login routes
+- Implement color-coded current numbers/labels for /browsers /os
+- Implement graph ticks (time labels)
 - Graph tooltips
+- Implement proper loading states (pulsing style)
 - Show server-side errors and data discontinuities.
+- Investigate mobile layout
