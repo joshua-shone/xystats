@@ -4,6 +4,12 @@ A web app for viewing live Google Analytics data.
 
 [![video](video-thumb.png)](https://youtu.be/AuDeXxjrQuQ)
 
+## Architecture
+
+![architecture](architecture.svg)
+
+Server-sent events were chosen over alternatives like websockets or socket.io because SSE is well suited to this use-case, extremely easy to set up, and performs automatic re-connection.
+
 ## Graphing
 
 The Google Analytics realtime API only allows retrieving a snapshot of current values, and so the server polls it at regular intervals, saving a timestamp each time. We can make no guarantees about the regularity of the polling or that there won't be discontinuities in the data due to variable network conditions, exceeding the API quota, API downtime etc. It's possible the values might not even be monotonic.
@@ -25,12 +31,6 @@ In addition, I'd like the graphs to smoothly scroll along as time progresses. It
 Hence there is a custom `Graph` component that achieves smooth scrolling/zooming and animation by efficiently mapping the entire dataset to a single SVG path, and rapidly adjusts the viewing range using the `viewBox` attribute.
 
 It also implements a snapping behavior, whereby if the viewing range is scrolled all the way to the right, it will lock to 'now' and smoothly scroll along as new data arrives.
-
-## Architecture
-
-![architecture](architecture.svg)
-
-Server-sent events were chosen over alternatives like websockets or socket.io because SSE is well suited to this use-case, extremely easy to set up, and performs automatic re-connection.
 
 ## Mockup
 
