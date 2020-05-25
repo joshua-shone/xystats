@@ -1,6 +1,6 @@
 # xystats
 
-A web app for viewing live Google Analytics data.
+A web app for viewing live Google Analytics data (work-in-progress).
 
 [![video](video-thumb.png)](https://youtu.be/AuDeXxjrQuQ)
 
