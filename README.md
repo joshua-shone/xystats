@@ -2,6 +2,8 @@
 
 A web app for viewing live Google Analytics data.
 
+[![video](video-thumb.png)](https://youtu.be/AuDeXxjrQuQ)
+
 ## Graphing
 
 The Google Analytics realtime API only allows retrieving a snapshot of current values, and so the server polls it at regular intervals, saving a timestamp each time. We can make no guarantees about the regularity of the polling or that there won't be discontinuities in the data due to variable network conditions, exceeding the API quota, API downtime etc. It's possible the values might not even be monotonic.
