@@ -2,29 +2,29 @@ import React from 'react';
 
 import { useSelector } from 'react-redux';
 
+import SummaryStats from '../SummaryStats';
 import Graph from '../Graph';
+
+import { solarizedPalette } from '../App';
 
 export default function BrowsersPage() {
   const metrics = useSelector(state => state.metrics);
+  const colors = [solarizedPalette.red, solarizedPalette.green, solarizedPalette.blue];
 
   if (metrics.length > 0) {
     const browsers = metrics.map(entry => ({timestamp: entry.timestamp, ...entry.browsers}));
-    const latestValues = browsers[browsers.length-1];
 
     return (
       <div className="overview">
-        <div>
-          <label>Browsers</label>
-        </div>
-        <div>
-          <span>Chrome: {latestValues.Chrome}</span>
-          <span>Firefox: {latestValues.Firefox}</span>
-          <span>Safari: {latestValues.Safari}</span>
-        </div>
+        <h2>Browsers</h2>
+        <SummaryStats
+          values={metrics[metrics.length-1].browsers}
+          colors={colors}
+          />
         <Graph
           data={browsers}
           keys={['Chrome', 'Firefox', 'Safari']}
-          colors={['#dc322f', '#859900', '#268bd2']}
+          colors={colors}
           />
       </div>
     );

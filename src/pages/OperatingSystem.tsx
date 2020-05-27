@@ -2,29 +2,29 @@ import React from 'react';
 
 import { useSelector } from 'react-redux';
 
+import SummaryStats from '../SummaryStats';
 import Graph from '../Graph';
+
+import { solarizedPalette } from '../App';
 
 export default function OperatingSystemPage() {
   const metrics = useSelector(state => state.metrics);
+  const colors = [solarizedPalette.red, solarizedPalette.green, solarizedPalette.blue];
 
   if (metrics.length > 0) {
     const os = metrics.map(entry => ({timestamp: entry.timestamp, ...entry.os}));
-    const latestValues = os[os.length-1];
 
     return (
       <div className="overview">
-        <div>
-          <label>Operating System</label>
-        </div>
-        <div>
-          <span>Linux: {latestValues.Linux}</span>
-          <span>Macintosh: {latestValues.Macintosh}</span>
-          <span>Windows: {latestValues.Windows}</span>
-        </div>
+        <h2>Operating System</h2>
+        <SummaryStats
+          values={metrics[metrics.length-1].os}
+          colors={colors}
+          />
         <Graph
           data={os}
           keys={['Linux', 'Macintosh', 'Windows']}
-          colors={['#dc322f', '#859900', '#268bd2']}
+          colors={colors}
           />
       </div>
     );
