@@ -45,7 +45,7 @@ export default function Graph( {data, keys=['value'], colors=[solarizedPalette.b
 
   // View ranges
   const [rangeDuration, setRangeDuration] = useState(DEFAULT_GRAPH_RANGE_MS);
-  const [rangeUntil, setRangeUntil] = useState('now');
+  const [rangeUntil, setRangeUntil] = useState<number | 'now'>('now');
 
   // Add up values in each entry to get stack segment positions
   const stacks = data.map(entry => {
@@ -72,7 +72,7 @@ export default function Graph( {data, keys=['value'], colors=[solarizedPalette.b
   let tickTimestamps: number[] = [];
 
   const tickRangeEnd = rangeUntil === 'now' ? now() : rangeUntil;
-  const tickRangeEndRef = useRef();
+  const tickRangeEndRef = useRef<number>();
   tickRangeEndRef.current = tickRangeEnd;
   const tickRangeStart = tickRangeEnd - rangeDuration;
 
@@ -120,8 +120,8 @@ export default function Graph( {data, keys=['value'], colors=[solarizedPalette.b
     setRangeDuration(newRangeDuration);
   }
 
-  const svgRef = useRef(null);
-  const tickContainerRef = useRef(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const tickContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // If the range is locked to 'now', smoothly scroll the graph forward in time
@@ -132,7 +132,7 @@ export default function Graph( {data, keys=['value'], colors=[solarizedPalette.b
           // A Ref is used to directly set the DOM attribute to avoid thrashing React rendering
           svgRef.current.setAttribute('viewBox', getViewBox());
         }
-        if (tickContainerRef.current) {
+        if (tickContainerRef.current && tickRangeEndRef.current) {
           tickContainerRef.current.style.transform = `translateX(${((tickRangeEndRef.current - now()) / rangeDuration) * 100}%)`;
         }
         animationFrameId = requestAnimationFrame(callback);
@@ -147,9 +147,12 @@ export default function Graph( {data, keys=['value'], colors=[solarizedPalette.b
 
   function onMouseDown(event) {
     event.preventDefault();
+    if (svgRef.current === null) {
+      return;
+    }
+    const boundingRect = svgRef.current.getBoundingClientRect();
     let draggedRangeUntil = rangeUntil === 'now' ? now() : rangeUntil;
     let lastPageX = event.pageX;
-    const boundingRect = svgRef.current.getBoundingClientRect();
     function onMousemove(event) {
       const deltaXRatio = (event.pageX - lastPageX) / boundingRect.width;
       draggedRangeUntil -= rangeDuration * deltaXRatio;

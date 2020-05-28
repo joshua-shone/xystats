@@ -6,9 +6,10 @@ const {google} = require('googleapis');
 const googleServiceAccountAuth = require('./google-service-account-auth.json');
 const analytics = google.analytics('v3');
 
+const DATA_FETCH_INTERVAL_MS = 3000;
+
 const data = []; // TODO: define types to be shared with client-side code
 const dataListeners = [];
-const dataFetchIntervalMs = 3000;
 
 (async function main() {
 
@@ -25,10 +26,14 @@ const dataFetchIntervalMs = 3000;
   // TODO: don't start Express if JWT authorization fails
 
   while (true) {
-    const newData = await fetchFromGoogleAnalytics(jwtClient);
-//     const newData = await generateRandomData();
+    // Note: I've seen similar projects that use setInterval() for this polling loop, but
+    // it can cause a storm of parallel API requests because setInterval doesn't wait for
+    // previous iterations to complete in the case of slow network conditions.
 
-    data.push(newData);
+    const newData = await fetchFromGoogleAnalytics(jwtClient);
+    // TODO: catch API request failures and log
+
+    data.push(newData); // TODO: limit number of entries
 
     // Notify clients listening with server-sent events
     while (dataListeners.length > 0) {
@@ -37,7 +42,7 @@ const dataFetchIntervalMs = 3000;
     }
 
     // TODO: account for duration of Analytics API fetch
-    await new Promise(resolve => setTimeout(resolve, dataFetchIntervalMs));
+    await new Promise(resolve => setTimeout(resolve, DATA_FETCH_INTERVAL_MS));
 
     // TODO: explicitly listen for exit signal?
   }
@@ -52,6 +57,12 @@ function sendIndexHtml(request, response) {
 app.get('/', sendIndexHtml);
 app.get('/browsers', sendIndexHtml);
 app.get('/os', sendIndexHtml);
+
+app.use(function(request, response, next) {
+  response.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
 
 app.get('/metrics', (request, response) => {
   response.send(data);
@@ -71,30 +82,7 @@ app.get('/live-events', async (request, response) => {
   }
 });
 
-app.listen(8080, () => console.log(`Example app listening at http://localhost:8080`))
-
-async function generateRandomData() {
-  const now = (new Date).getTime();
-
-  const random = () => Math.floor(Math.random() * 42);
-
-  return {
-    timestamp: now,
-    activeUsers: {
-      value: random(),
-    },
-    browsers: {
-      Firefox: random(),
-      Chrome:  random(),
-      Safari:  random(),
-    },
-    os: {
-      Linux:     random(),
-      Macintosh: random(),
-      Windows:   random(),
-    }
-  }
-}
+app.listen(8080, () => console.log(`Listening at http://localhost:8080`))
 
 async function fetchFromGoogleAnalytics(jwtClient) {
 
@@ -130,5 +118,34 @@ async function fetchFromGoogleAnalytics(jwtClient) {
     activeUsers: activeUsers,
     browsers: getDimensionAsMap('rt:browser'),
     os: getDimensionAsMap('rt:operatingSystem'),
+  }
+}
+
+function generateInitialRandomData() {
+  const data = [];
+  const now = (new Date()).getTime();
+  const entries = 30;
+  for (let i=0; i < entries; i++) {
+    data.push(generateRandomData(now - ((entries - i) * DATA_FETCH_INTERVAL_MS)));
+  }
+  return data;
+}
+
+function generateRandomData(timestamp) {
+  const random = () => Math.floor(Math.random() * 42);
+
+  return {
+    timestamp: timestamp,
+    activeUsers: random(),
+    browsers: {
+      Firefox: random(),
+      Chrome:  random(),
+      Safari:  random(),
+    },
+    os: {
+      Linux:     random(),
+      Macintosh: random(),
+      Windows:   random(),
+    }
   }
 }
