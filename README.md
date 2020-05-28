@@ -38,10 +38,10 @@ It also implements a snapping behavior, whereby if the viewing range is scrolled
 
 ## TODO
 
-- [ ] Share TypeScript types for the metrics between the server/client
+- [x] Share TypeScript types for the metrics between the server/client
 - [ ] Refactor all styling with CSS-in-JS!
 - [ ] General code refactoring.. Graph() especially quite rough atm
-- [ ] Deploy to DigitalOcean
+- [x] Deploy to DigitalOcean
 - [x] Enable linting
 - [ ] Mock login routes
 - [x] Implement color-coded current numbers/labels for /browsers /os
