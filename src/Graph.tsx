@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 
+import { Metrics } from '../types/metrics'
+
 import { makeStyles } from '@material-ui/core/styles'
 
 import { solarizedPalette } from './App'
@@ -37,7 +39,13 @@ const useStyles = makeStyles({
   }
 })
 
-export default function Graph ({ data, keys = ['value'], colors = [solarizedPalette.base0] }) {
+interface GraphProps {
+  data: Metrics[],
+  keys?: string[],
+  colors?: string[],
+}
+
+export default function Graph ({ data, keys = ['value'], colors = [solarizedPalette.base0] }: GraphProps) {
   const classes = useStyles()
 
   const firstTimestamp = data[0].timestamp

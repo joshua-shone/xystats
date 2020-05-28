@@ -1,13 +1,18 @@
 import { createStore } from 'redux'
 
-// TODO: add types, shared with server
+import { Metrics } from '../types/metrics'
 
-const initialState = {
-  navOpenMobile: false,
-  metrics: []
+interface State {
+  metrics: Metrics[],
+  navOpenMobile: boolean,
 }
 
-function reducer (state = initialState, action) {
+const initialState: State = {
+  metrics: [],
+  navOpenMobile: false
+}
+
+function reducer (state: State = initialState, action) {
   switch (action.type) {
     case 'ADD_METRICS':
       return {

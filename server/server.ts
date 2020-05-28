@@ -3,13 +3,19 @@ const path = require('path');
 const app = express();
 
 const {google} = require('googleapis');
-const googleServiceAccountAuth = require('./google-service-account-auth.json');
 const analytics = google.analytics('v3');
+const googleServiceAccountAuth = require('../google-service-account-auth.json');
+
+import {Metrics} from '../types/metrics';
 
 const DATA_FETCH_INTERVAL_MS = 3000;
 
-const data = []; // TODO: define types to be shared with client-side code
-const dataListeners = [];
+const data: Metrics[] = [];
+
+interface DataListener {
+  (param:Metrics): void
+}
+const dataListeners: DataListener[] = [];
 
 (async function main() {
 
@@ -48,7 +54,7 @@ const dataListeners = [];
   }
 })();
 
-app.use(express.static(path.join(__dirname, 'build')));
+app.use(express.static(path.join(__dirname, '../build')));
 
 function sendIndexHtml(request, response) {
   response.sendFile(path.join(__dirname, 'build', 'index.html'));
@@ -84,11 +90,11 @@ app.get('/live-events', async (request, response) => {
 
 app.listen(8080, () => console.log(`Listening at http://localhost:8080`))
 
-async function fetchFromGoogleAnalytics(jwtClient) {
+async function fetchFromGoogleAnalytics(jwtClient): Promise<Metrics> {
 
   const now = (new Date).getTime(); // TODO: synchronization?
 
-  const response = await analytics.data.realtime.get({
+  const response = await (<any>analytics.data.realtime.get)({
     auth: jwtClient,
     ids: 'ga:215194843',
     metrics: 'rt:activeUsers',
@@ -131,7 +137,7 @@ function generateInitialRandomData() {
   return data;
 }
 
-function generateRandomData(timestamp) {
+function generateRandomData(timestamp): Metrics {
   const random = () => Math.floor(Math.random() * 42);
 
   return {
