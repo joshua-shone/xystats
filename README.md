@@ -38,15 +38,17 @@ It also implements a snapping behavior, whereby if the viewing range is scrolled
 
 ## TODO
 
-- Share TypeScript types for the metrics between the server/client
-- Refactor all styling with CSS-in-JS!
-- General code refactoring.. Graph() especially quite rough atm
-- Deploy to DigitalOcean
-- Enable linting
-- Mock login routes
-- Implement color-coded current numbers/labels for /browsers /os
-- Implement graph ticks (time labels)
-- Graph tooltips
-- Implement proper loading states (pulsing style)
-- Show server-side errors and data discontinuities.
-- Investigate mobile layout
+- [ ] Share TypeScript types for the metrics between the server/client
+- [ ] Refactor all styling with CSS-in-JS!
+- [ ] General code refactoring.. Graph() especially quite rough atm
+- [ ] Deploy to DigitalOcean
+- [x] Enable linting
+- [ ] Mock login routes
+- [x] Implement color-coded current numbers/labels for /browsers /os
+- [x] Implement graph ticks (time labels)
+- [ ] Graph tooltips
+- [ ] Dynamically switch to a line graph when zoomed out enough
+- [ ] Implement proper loading states (pulsing style)
+- [ ] Show server-side errors and data discontinuities.
+- [ ] Investigate mobile layout
+- [ ] Cross-browser testing with BrowserStack
