@@ -2,25 +2,42 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import { makeStyles } from '@material-ui/core/styles';
 
+import { solarizedPalette } from './App';
+
 const DEFAULT_GRAPH_RANGE_MS = 60 * 1000;
 const POLLING_INTERVAL_MS = 3000;
 
+const MAX_TICK_COUNT = 10;
+const TICK_INTERVALS_MS = [5000, 10000, 30000, 60000, 60000 * 5];
+
 const useStyles = makeStyles({
   root: {
+    display: 'flex',
+    flexDirection: 'column',
     minHeight: '15rem',
+    overflow: 'hidden',
     cursor: 'grab',
+    flexGrow: 1,
+  },
+  svg: {
     flexGrow: 1,
   },
   path: {
     fill: 'none',
     strokeWidth: POLLING_INTERVAL_MS * 0.75,
     transform: 'scaleY(-1) translateY(-100%)', // Flip vertically so a Y value of zero appears on the bottom
+  },
+  tickContainer: {
+    height: '1.1rem',
+    position: 'relative',
+  },
+  tick: {
+    position: 'absolute',
+    fontSize: '1rem',
   }
 });
 
-// TODO: source default color from theme palette
-
-export default function Graph( {data, keys=['value'], colors=['#839496']} ) {
+export default function Graph( {data, keys=['value'], colors=[solarizedPalette.base0]} ) {
 
   const classes = useStyles();
 
@@ -51,7 +68,32 @@ export default function Graph( {data, keys=['value'], colors=['#839496']} ) {
     />
   ));
   // TODO: Splitting up paths based on a certain duration threshold may improve React reconciliation performance
-  // TODO: add X-axis ticks
+
+  let tickTimestamps: number[] = [];
+
+  const tickRangeEnd = rangeUntil === 'now' ? now() : rangeUntil;
+  const tickRangeEndRef = useRef();
+  tickRangeEndRef.current = tickRangeEnd;
+  const tickRangeStart = tickRangeEnd - rangeDuration;
+
+  // Find the smallest tick interval that won't exceed the maximum number of ticks
+  const tickIntervalMs = TICK_INTERVALS_MS.find(interval => (rangeDuration / interval) <= MAX_TICK_COUNT);
+  if (tickIntervalMs) {
+    const firstTickTimestamp = Math.floor(tickRangeStart / tickIntervalMs) * tickIntervalMs;
+    for (let i=firstTickTimestamp; i <= tickRangeEnd; i += tickIntervalMs) {
+      tickTimestamps.push(i);
+    }
+  }
+
+  const ticks = tickTimestamps.map(timestamp => (
+    <span
+      key={timestamp}
+      className={classes.tick}
+      style={{left: `${((timestamp - tickRangeStart) / rangeDuration) * 100}%`}}
+    >
+      {getTickTextForTimestamp(timestamp)}
+    </span>
+  ));
 
   // Get the highest point on the graph, to determine the viewBox height
   const maxValue = Math.max(...stacks.map(stack => stack[keys.length-1][1]));
@@ -79,6 +121,7 @@ export default function Graph( {data, keys=['value'], colors=['#839496']} ) {
   }
 
   const svgRef = useRef(null);
+  const tickContainerRef = useRef(null);
 
   useEffect(() => {
     // If the range is locked to 'now', smoothly scroll the graph forward in time
@@ -88,6 +131,9 @@ export default function Graph( {data, keys=['value'], colors=['#839496']} ) {
         if (svgRef.current) {
           // A Ref is used to directly set the DOM attribute to avoid thrashing React rendering
           svgRef.current.setAttribute('viewBox', getViewBox());
+        }
+        if (tickContainerRef.current) {
+          tickContainerRef.current.style.transform = `translateX(${((tickRangeEndRef.current - now()) / rangeDuration) * 100}%)`;
         }
         animationFrameId = requestAnimationFrame(callback);
       });
@@ -120,19 +166,30 @@ export default function Graph( {data, keys=['value'], colors=['#839496']} ) {
   }
 
   return (
-    <svg
-      className={classes.root}
-      viewBox={getViewBox()}
-      preserveAspectRatio="none"
-      ref={svgRef}
-      onWheel={onWheel}
-      onMouseDown={onMouseDown}
-    >
-      {paths}
-    </svg>
+    <div className={classes.root}>
+      <svg
+        className={classes.svg}
+        viewBox={getViewBox()}
+        preserveAspectRatio="none"
+        ref={svgRef}
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+      >
+        {paths}
+      </svg>
+      <div ref={tickContainerRef} className={classes.tickContainer}>
+        {ticks}
+      </div>
+    </div>
   )
 }
 
 function now() {
   return (new Date()).getTime();
+}
+
+function getTickTextForTimestamp(timestamp: number) {
+  const seconds = String(Math.floor(timestamp / 1000) % 60).padStart(2, '0');
+  const minutes = String(Math.floor(timestamp / 60000) % 60).padStart(2, '0');
+  return `${minutes}:${seconds}`;
 }
