@@ -26,7 +26,7 @@ const dataListeners: DataListener[] = [];
 app.use(express.static(path.join(__dirname, '../build')));
 
 function sendIndexHtml(request, response) {
-  response.sendFile(path.join(__dirname, 'build', 'index.html'));
+  response.sendFile(path.join(__dirname, '../build', 'index.html'));
 }
 
 app.get('/', sendIndexHtml);
