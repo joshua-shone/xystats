@@ -9,5 +9,6 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "noImplicitAny": false,
+    "downlevelIteration": true
   }
 }

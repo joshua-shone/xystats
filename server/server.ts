@@ -18,7 +18,7 @@ const data: Metrics[] = [];
 interface DataListener {
   (param:Metrics): void
 }
-const dataListeners: DataListener[] = [];
+const dataListeners: Set<DataListener> = new Set();
 
 // For development convenience this server currently both acts as the API and
 // static fileserver for the client-side assets.
@@ -44,7 +44,9 @@ app.get('/metrics', (request, response) => {
   response.send(data);
 });
 
-app.get('/live-events', async (request, response) => {
+app.get('/live-events', (request, response) => {
+  console.log('/live-events connection opened');
+
   response.status(200);
   response.set({
     'Connection': 'keep-alive',
@@ -52,11 +54,16 @@ app.get('/live-events', async (request, response) => {
     'Content-Type': 'text/event-stream',
   });
 
-  while (true) {
-    const newData = await new Promise(resolve => dataListeners.push(resolve));
-    response.write(`data: ${JSON.stringify(newData)}\n\n`);
-    // TODO: handle request close
+  function handleNewData(data) {
+    response.write(`data: ${JSON.stringify(data)}\n\n`);
   }
+
+  dataListeners.add(handleNewData);
+
+  response.on('close', () => {
+    dataListeners.delete(handleNewData);
+    console.log('/live-events connection closed');
+  });
 });
 
 if (argv.generate_random) {
@@ -100,8 +107,7 @@ async function googleAnalyticsUpdateLoop() {
     }
 
     // Notify clients listening with server-sent events
-    while (dataListeners.length > 0) {
-      const callback = dataListeners.pop();
+    for (const callback of dataListeners) {
       callback(newData);
     }
 
@@ -162,8 +168,7 @@ async function randomGenerationUpdateLoop() {
     data.push(newData);
 
     // Notify clients listening with server-sent events
-    while (dataListeners.length > 0) {
-      const callback = dataListeners.pop();
+    for (const callback of dataListeners) {
       callback(newData);
     }
 
