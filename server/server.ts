@@ -1,4 +1,4 @@
-const {argv} = require('yargs'); // TODO: declare args with description and types
+const yargs = require('yargs');
 
 const express = require('express');
 const path = require('path');
@@ -9,88 +9,113 @@ const analytics = google.analytics('v3');
 
 import {Metrics} from '../types/metrics';
 
-const DEFAULT_PORT = 8080;
-const DATA_FETCH_INTERVAL_MS = 3000;
-const MAX_DATA_ENTRIES = 200;
+const argv = yargs.options({
+  port: {
+    type: 'number',
+    default: 8080
+  },
+  polling_interval_ms: {
+    type: 'number',
+    default: 3000,
+    describe: 'The number of milliseconds to wait after each fetch from Google Analytics',
+  },
+  max_timeseries_entries: {
+    type: 'number',
+    default: 200,
+    describe: 'Once this number of fetches have been made, old metrics will be removed before new metrics are added.',
+  },
+  generate_random: {
+    type: 'boolean',
+    default: false,
+    describe: 'Generate random metrics instead of fetching from Google Analytics.'
+  },
+})
+.help()
+.argv;
 
-const data: Metrics[] = [];
+const timeseries: Metrics[] = [];
 
-interface DataListener {
+interface MetricsListener {
   (param:Metrics): void
 }
-const dataListeners: Set<DataListener> = new Set();
+const metricsListeners: Set<MetricsListener> = new Set();
 
-// For development convenience this server currently both acts as the API and
-// static fileserver for the client-side assets.
-// In an actual production deployment use of a separate CDN for the static assets would be more appropriate.
-app.use(express.static(path.join(__dirname, '../build')));
+main();
 
-function sendIndexHtml(request, response) {
-  response.sendFile(path.join(__dirname, '../build', 'index.html'));
-}
+async function main() {
 
-app.get('/', sendIndexHtml);
-app.get('/browsers', sendIndexHtml);
-app.get('/os', sendIndexHtml);
+  if (argv.generate_random) {
 
-app.use(function(request, response, next) {
-  // Allow the create-react-app development server to connect
-  response.header("Access-Control-Allow-Origin", "http://localhost:3000");
-  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
-});
+    randomGenerationUpdateLoop();
 
-app.get('/metrics', (request, response) => {
-  response.send(data);
-});
+  } else {
 
-app.get('/live-events', (request, response) => {
-  console.log('/live-events connection opened');
+    const googleServiceAccount = require('../google-service-account.json');
 
-  response.status(200);
-  response.set({
-    'Connection': 'keep-alive',
-    'Cache-Control': 'no-cache',
-    'Content-Type': 'text/event-stream',
-  });
+    const jwtClient = new google.auth.JWT({
+      email: googleServiceAccount.client_email,
+      key: googleServiceAccount.private_key,
+      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
+    });
 
-  function handleNewData(data) {
-    response.write(`data: ${JSON.stringify(data)}\n\n`);
+    await new Promise((resolve, reject) => jwtClient.authorize((error, tokens) => {
+      if (error) reject(error);
+      else resolve();
+    }));
+
+    googleAnalyticsUpdateLoop(jwtClient);
   }
 
-  dataListeners.add(handleNewData);
+  // For development convenience this server currently both acts as the API and
+  // static fileserver for the client-side assets.
+  // In an actual production deployment use of a separate CDN for the static assets would be more appropriate.
+  app.use(express.static(path.join(__dirname, '../build')));
 
-  response.on('close', () => {
-    dataListeners.delete(handleNewData);
-    console.log('/live-events connection closed');
+  function sendIndexHtml(request, response) {
+    response.sendFile(path.join(__dirname, '../build', 'index.html'));
+  }
+
+  app.get('/', sendIndexHtml);
+  app.get('/browsers', sendIndexHtml);
+  app.get('/os', sendIndexHtml);
+
+  app.use((request, response, next) => {
+    // Allow the create-react-app development server to connect
+    response.header("Access-Control-Allow-Origin", "http://localhost:3000");
+    response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
   });
-});
 
-if (argv.generate_random) {
-  randomGenerationUpdateLoop();
-} else {
-  googleAnalyticsUpdateLoop();
+  app.get('/metrics', (request, response) => {
+    response.send(timeseries);
+  });
+
+  app.get('/live-events', (request, response) => {
+    console.log('/live-events connection opened');
+
+    response.status(200);
+    response.set({
+      'Connection': 'keep-alive',
+      'Cache-Control': 'no-cache',
+      'Content-Type': 'text/event-stream',
+    });
+
+    function onNewMetrics(metrics: Metrics) {
+      response.write(`data: ${JSON.stringify(metrics)}\n\n`);
+    }
+
+    metricsListeners.add(onNewMetrics);
+
+    response.on('close', () => {
+      metricsListeners.delete(onNewMetrics);
+      console.log('/live-events connection closed');
+    });
+  });
+
+  app.listen(argv.port, () => console.log(`Listening at http://:${argv.port}`));
 }
 
-const port = argv.port || DEFAULT_PORT;
-
-app.listen(port, () => console.log(`Listening at http://:${port}`))
-
-async function googleAnalyticsUpdateLoop() {
-
-  const googleServiceAccount = require('../google-service-account.json');
-
-  const jwtClient = new google.auth.JWT({
-    email: googleServiceAccount.client_email,
-    key: googleServiceAccount.private_key,
-    scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-  });
-
-  await new Promise((resolve, reject) => jwtClient.authorize((error, tokens) => {
-    if (error) reject(error);
-    else resolve();
-  }));
-  // TODO: don't start Express if JWT authorization fails
+async function googleAnalyticsUpdateLoop(jwtClient) {
 
   while (true) {
     // Note: I've seen similar projects that use setInterval() for this polling loop, but
@@ -100,20 +125,20 @@ async function googleAnalyticsUpdateLoop() {
     const metrics = await fetchFromGoogleAnalytics(jwtClient);
 
     if (metrics !== null) {
-      data.push(metrics);
+      timeseries.push(metrics);
 
-      if (data.length > MAX_DATA_ENTRIES) {
-        data.splice(0, data.length - MAX_DATA_ENTRIES);
+      if (timeseries.length > argv.max_timeseries_entries) {
+        timeseries.splice(0, timeseries.length - argv.max_timeseries_entries);
       }
 
       // Notify clients listening with server-sent events
-      for (const callback of dataListeners) {
+      for (const callback of metricsListeners) {
         callback(metrics);
       }
     }
 
     // TODO: account for duration of Analytics API fetch
-    await new Promise(resolve => setTimeout(resolve, DATA_FETCH_INTERVAL_MS));
+    await new Promise(resolve => setTimeout(resolve, argv.polling_interval_ms));
 
     // TODO: explicitly listen for exit signal?
   }
@@ -164,25 +189,25 @@ async function fetchFromGoogleAnalytics(jwtClient): Promise<Metrics | null> {
 async function randomGenerationUpdateLoop() {
   const now = (new Date()).getTime();
 
-  for (let i=0; i < MAX_DATA_ENTRIES; i++) {
-    data.push(generateRandomData(now - ((MAX_DATA_ENTRIES - i) * DATA_FETCH_INTERVAL_MS)));
+  for (let i=0; i < argv.max_timeseries_entries; i++) {
+    timeseries.push(generateRandomMetrics(now - ((argv.max_timeseries_entries - i) * argv.polling_interval_ms)));
   }
 
   while (true) {
-    const metrics = generateRandomData((new Date()).getTime());
+    const metrics = generateRandomMetrics((new Date()).getTime());
 
-    data.push(metrics);
+    timeseries.push(metrics);
 
     // Notify clients listening with server-sent events
-    for (const callback of dataListeners) {
+    for (const callback of metricsListeners) {
       callback(metrics);
     }
 
-    await new Promise(resolve => setTimeout(resolve, DATA_FETCH_INTERVAL_MS));
+    await new Promise(resolve => setTimeout(resolve, argv.polling_interval_ms));
   }
 }
 
-function generateRandomData(timestamp): Metrics {
+function generateRandomMetrics(timestamp: number): Metrics {
   const random = () => Math.floor(Math.random() * 42);
 
   return {
