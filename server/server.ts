@@ -4,6 +4,11 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
+const pino = require('pino')();
+const pinoHttp = require('pino-http')({
+  logger: pino,
+});
+
 const {google} = require('googleapis');
 const analytics = google.analytics('v3');
 
@@ -66,6 +71,8 @@ async function main() {
     googleAnalyticsUpdateLoop(jwtClient);
   }
 
+  app.use(pinoHttp);
+
   // For development convenience this server currently both acts as the API and
   // static fileserver for the client-side assets.
   // In an actual production deployment use of a separate CDN for the static assets would be more appropriate.
@@ -91,8 +98,6 @@ async function main() {
   });
 
   app.get('/live-events', (request, response) => {
-    console.log('/live-events connection opened');
-
     response.status(200);
     response.set({
       'Connection': 'keep-alive',
@@ -101,6 +106,7 @@ async function main() {
     });
 
     function onNewMetrics(metrics: Metrics) {
+      request.log.info('sending metrics');
       response.write(`data: ${JSON.stringify(metrics)}\n\n`);
     }
 
@@ -108,11 +114,11 @@ async function main() {
 
     response.on('close', () => {
       metricsListeners.delete(onNewMetrics);
-      console.log('/live-events connection closed');
+      request.log.info('connection closed');
     });
   });
 
-  app.listen(argv.port, () => console.log(`Listening at http://:${argv.port}`));
+  app.listen(argv.port, () => pino.info(`Express started listening on port ${argv.port}`));
 }
 
 async function googleAnalyticsUpdateLoop(jwtClient) {
@@ -130,6 +136,15 @@ async function googleAnalyticsUpdateLoop(jwtClient) {
       if (timeseries.length > argv.max_timeseries_entries) {
         timeseries.splice(0, timeseries.length - argv.max_timeseries_entries);
       }
+
+      pino.info(
+        {
+          ...metrics,
+          timeseries_count: timeseries.length,
+          listeners_count: metricsListeners.size,
+        },
+        'Fetched metrics from Google Analytics'
+      );
 
       // Notify clients listening with server-sent events
       for (const callback of metricsListeners) {
@@ -157,7 +172,7 @@ async function fetchFromGoogleAnalytics(jwtClient): Promise<Metrics | null> {
       output: 'json',
     });
   } catch (error) {
-    console.error(error);
+    pino.error(error);
     return null;
   }
 

@@ -12,20 +12,22 @@
     "@types/node": "^12.0.0",
     "@types/react": "^16.9.0",
     "@types/react-dom": "^16.9.0",
+    "@vrbo/pino-rotating-file": "^1.1.0",
     "googleapis": "^51.0.0",
+    "pino-http": "^5.2.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-redux": "^7.2.0",
     "react-router-dom": "^5.2.0",
     "react-scripts": "3.4.1",
     "redux": "^4.0.5",
-    "ts-node": "^8.10.1",
     "typescript": "~3.7.2"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "build-server": "tsc --project server/tsconfig.json",
+    "start-server": "ts-node --project server/tsconfig.json server/server.ts | rotate-logs --config=rotate-logs-config.js",
     "test": "standardx --parser @typescript-eslint/parser --plugin @typescript-eslint/eslint-plugin \"src/**/*.ts\" \"src/**/*.tsx\"",
     "eject": "react-scripts eject"
   },
@@ -47,6 +49,7 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^3.0.2",
     "@typescript-eslint/parser": "^3.0.2",
-    "standardx": "^5.0.0"
+    "standardx": "^5.0.0",
+    "ts-node": "^8.10.2"
   }
 }
