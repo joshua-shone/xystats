@@ -97,18 +97,19 @@ async function googleAnalyticsUpdateLoop() {
     // it can cause a storm of parallel API requests because setInterval doesn't wait for
     // previous iterations to complete in the case of slow network conditions.
 
-    const newData = await fetchFromGoogleAnalytics(jwtClient);
-    // TODO: catch API request failures and log
+    const metrics = await fetchFromGoogleAnalytics(jwtClient);
 
-    data.push(newData);
+    if (metrics !== null) {
+      data.push(metrics);
 
-    if (data.length > MAX_DATA_ENTRIES) {
-      data.splice(0, data.length - MAX_DATA_ENTRIES);
-    }
+      if (data.length > MAX_DATA_ENTRIES) {
+        data.splice(0, data.length - MAX_DATA_ENTRIES);
+      }
 
-    // Notify clients listening with server-sent events
-    for (const callback of dataListeners) {
-      callback(newData);
+      // Notify clients listening with server-sent events
+      for (const callback of dataListeners) {
+        callback(metrics);
+      }
     }
 
     // TODO: account for duration of Analytics API fetch
@@ -118,17 +119,22 @@ async function googleAnalyticsUpdateLoop() {
   }
 }
 
-async function fetchFromGoogleAnalytics(jwtClient): Promise<Metrics> {
+async function fetchFromGoogleAnalytics(jwtClient): Promise<Metrics | null> {
 
   const now = (new Date).getTime(); // TODO: synchronization?
 
-  const response = await (<any>analytics.data.realtime.get)({
-    auth: jwtClient,
-    ids: 'ga:215194843',
-    metrics: 'rt:activeUsers',
-    dimensions: 'rt:browser,rt:operatingSystem', // TODO: make dimensions configurable
-    output: 'json',
-  });
+  try {
+    var response = await analytics.data.realtime.get({
+      auth: jwtClient,
+      ids: 'ga:215194843',
+      metrics: 'rt:activeUsers',
+      dimensions: 'rt:browser,rt:operatingSystem', // TODO: make dimensions configurable
+      output: 'json',
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 
   const columnNames = response.data.columnHeaders.map(header => header.name);
   const activeUsersColumnIndex = columnNames.indexOf('rt:activeUsers');
@@ -136,7 +142,7 @@ async function fetchFromGoogleAnalytics(jwtClient): Promise<Metrics> {
 
   const activeUsers = rows.reduce((count, row) => count + parseInt(row[activeUsersColumnIndex]), 0);
 
-  function getDimensionAsMap(dimension) {
+  function getDimensionAsObject(dimension: string) {
     const map = {};
     const dimensionIndex = columnNames.indexOf(dimension);
     for (const row of rows) {
@@ -150,8 +156,8 @@ async function fetchFromGoogleAnalytics(jwtClient): Promise<Metrics> {
   return {
     timestamp: now,
     activeUsers: activeUsers,
-    browsers: getDimensionAsMap('rt:browser'),
-    os: getDimensionAsMap('rt:operatingSystem'),
+    browsers: getDimensionAsObject('rt:browser'),
+    os: getDimensionAsObject('rt:operatingSystem'),
   }
 }
 
@@ -163,13 +169,13 @@ async function randomGenerationUpdateLoop() {
   }
 
   while (true) {
-    const newData = generateRandomData((new Date()).getTime());
+    const metrics = generateRandomData((new Date()).getTime());
 
-    data.push(newData);
+    data.push(metrics);
 
     // Notify clients listening with server-sent events
     for (const callback of dataListeners) {
-      callback(newData);
+      callback(metrics);
     }
 
     await new Promise(resolve => setTimeout(resolve, DATA_FETCH_INTERVAL_MS));
