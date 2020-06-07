@@ -3,12 +3,14 @@ import { createStore } from 'redux'
 import { Metrics } from '../types/metrics'
 
 interface State {
-  metrics: Metrics[],
+  timeseries: Metrics[],
+  isLoadingMetrics: boolean,
   navOpenMobile: boolean,
 }
 
 const initialState: State = {
-  metrics: [],
+  timeseries: [],
+  isLoadingMetrics: true,
   navOpenMobile: false
 }
 
@@ -17,7 +19,12 @@ function reducer (state: State = initialState, action) {
     case 'ADD_METRICS':
       return {
         ...state,
-        metrics: state.metrics.concat(action.metrics)
+        timeseries: state.timeseries.concat(action.timeseries)
+      }
+    case 'SET_METRICS_LOADING_STATE':
+      return {
+        ...state,
+        isLoadingMetrics: action.isLoadingMetrics
       }
     case 'TOGGLE_NAV_MOBILE':
       return {

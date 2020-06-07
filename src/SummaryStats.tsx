@@ -2,11 +2,13 @@ import React from 'react'
 
 import { makeStyles } from '@material-ui/core/styles'
 
-const useStyles = makeStyles({
+export const useStyles = makeStyles({
   root: {
     width: '40rem',
+    height: '2.8rem',
     maxWidth: '70%',
-    marginBottom: '1rem'
+    marginBottom: '1rem',
+    flexGrow: 0,
   },
   bar: {
     height: '1.2rem',
@@ -16,6 +18,7 @@ const useStyles = makeStyles({
     textAlign: 'center'
   },
   label: {
+    height: '1rem',
     fontWeight: 'bold',
     marginRight: '1rem'
   }

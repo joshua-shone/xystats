@@ -3,25 +3,27 @@ import React from 'react'
 import { useSelector } from 'react-redux'
 
 import Graph from '../Graph'
+import { useStyles as useLoadingIndicatorStyles } from '../LoadingIndicator';
 
 export default function OverviewPage () {
-  const metrics = useSelector(state => state.metrics)
+  const timeseries = useSelector(state => state.timeseries)
+  const isLoadingMetrics = useSelector(state => state.isLoadingMetrics)
 
-  if (metrics.length > 0) {
-    const activeUsers = metrics.map(entry => ({ timestamp: entry.timestamp, value: entry.activeUsers }))
-    return (
-      <div className='overview'>
-        <div className='current-active-users'>
-          <div className='value'>{activeUsers[activeUsers.length - 1].value}</div>
-          <label>Active users</label>
+  const activeUsersTimeseries = timeseries.map(entry => ({ timestamp: entry.timestamp, value: entry.activeUsers }))
+
+  const loadingIndicatorClasses = useLoadingIndicatorStyles();
+
+  return (
+    <div className='overview'>
+      <div className='current-active-users'>
+        <div className='value'>
+          <span className={isLoadingMetrics ? loadingIndicatorClasses.root : ''}>
+            {isLoadingMetrics ? '0' : activeUsersTimeseries[activeUsersTimeseries.length - 1].value}
+          </span>
         </div>
-        <Graph data={activeUsers} />
+        <label>Active users</label>
       </div>
-    )
-  } else {
-    // TODO: pulsing loading effect
-    return (
-      <div>loading..</div>
-    )
-  }
+      <Graph data={activeUsersTimeseries} isLoading={isLoadingMetrics} />
+    </div>
+  )
 }

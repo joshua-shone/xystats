@@ -3,14 +3,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Metrics } from '../types/metrics'
 
 import { makeStyles } from '@material-ui/core/styles'
+import { useStyles as useLoadingIndicatorStyles } from './LoadingIndicator';
 
-import { solarizedPalette } from './App'
+import { solarizedPalette } from './theme'
 
-const DEFAULT_GRAPH_RANGE_MS = 60 * 1000
-const POLLING_INTERVAL_MS = 3000
+const DEFAULT_GRAPH_RANGE_MS = 5 * 60 * 1000
+const POLLING_INTERVAL_MS = 10000
 
 const MAX_TICK_COUNT = 10
-const TICK_INTERVALS_MS = [5000, 10000, 30000, 60000, 60000 * 5]
+const TICK_INTERVALS_MS = [5000, 10000, 30000, 60000, 60000 * 5, 60000 * 10]
 
 const useStyles = makeStyles({
   root: {
@@ -41,14 +42,16 @@ const useStyles = makeStyles({
 
 interface GraphProps {
   data: Metrics[],
+  isLoading: boolean,
   keys?: string[],
   colors?: string[],
 }
 
-export default function Graph ({ data, keys = ['value'], colors = [solarizedPalette.base0] }: GraphProps) {
+export default function Graph ({ data, isLoading, keys = ['value'], colors = [solarizedPalette.base0] }: GraphProps) {
   const classes = useStyles()
+  const loadingIndicatorClasses = useLoadingIndicatorStyles();
 
-  const firstTimestamp = data[0].timestamp
+  const firstTimestamp = data.length > 0 ? data[0].timestamp : 0;
 
   // View ranges
   const [rangeDuration, setRangeDuration] = useState(DEFAULT_GRAPH_RANGE_MS)
@@ -84,6 +87,7 @@ export default function Graph ({ data, keys = ['value'], colors = [solarizedPale
   const tickRangeStart = tickRangeEnd - rangeDuration
 
   // Find the smallest tick interval that won't exceed the maximum number of ticks
+  // TODO: determine MAX_TICK_COUNT based on svg width
   const tickIntervalMs = TICK_INTERVALS_MS.find(interval => (rangeDuration / interval) <= MAX_TICK_COUNT)
   if (tickIntervalMs) {
     const firstTickTimestamp = Math.floor(tickRangeStart / tickIntervalMs) * tickIntervalMs
@@ -177,16 +181,18 @@ export default function Graph ({ data, keys = ['value'], colors = [solarizedPale
 
   return (
     <div className={classes.root}>
-      <svg
-        className={classes.svg}
-        viewBox={getViewBox()}
-        preserveAspectRatio='none'
-        ref={svgRef}
-        onWheel={onWheel}
-        onMouseDown={onMouseDown}
-      >
-        {paths}
-      </svg>
+      {isLoading ? <div className={loadingIndicatorClasses.root}></div> :
+        <svg
+          className={classes.svg}
+          viewBox={getViewBox()}
+          preserveAspectRatio='none'
+          ref={svgRef}
+          onWheel={onWheel}
+          onMouseDown={onMouseDown}
+        >
+          {paths}
+        </svg>
+      }
       <div ref={tickContainerRef} className={classes.tickContainer}>
         {ticks}
       </div>
