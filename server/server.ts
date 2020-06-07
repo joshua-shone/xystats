@@ -21,8 +21,8 @@ const argv = yargs.options({
   },
   polling_interval_ms: {
     type: 'number',
-    default: 3000,
-    describe: 'The number of milliseconds to wait after each fetch from Google Analytics',
+    default: 10000,
+    describe: 'The number of milliseconds to wait after each fetch from Google Analytics. Use >=8640 to avoid the 10,000 per day API quota.',
   },
   max_timeseries_entries: {
     type: 'number',
@@ -129,6 +129,9 @@ async function googleAnalyticsUpdateLoop(jwtClient) {
     // previous iterations to complete in the case of slow network conditions.
 
     const metrics = await fetchFromGoogleAnalytics(jwtClient);
+
+    // Note: the Google Analytics Real Time API allows only 10,000 requests per view (profile) per day
+    // See https://developers.google.com/analytics/devguides/reporting/core/v3/limits-quotas#reporting_apis
 
     if (metrics !== null) {
       timeseries.push(metrics);
