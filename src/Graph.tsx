@@ -55,7 +55,7 @@ export default function Graph ({ timeseries, isLoading, keys = ['value'], colors
 
   const tickTimestamps: number[] = []
 
-  const tickRangeEnd = rangeUntil === 'now' ? now() : rangeUntil
+  const [tickRangeEnd, setTickRangeEnd] = useState(rangeUntil === 'now' ? now() : rangeUntil);
   const tickRangeEndRef = useRef<number>()
   tickRangeEndRef.current = tickRangeEnd
   const tickRangeStart = tickRangeEnd - rangeDuration
@@ -80,6 +80,19 @@ export default function Graph ({ timeseries, isLoading, keys = ['value'], colors
     </span>
   ))
 
+  // If following 'now' (animated scrolling), generate new ticks when they should
+  // appear by resetting the tick range
+  useEffect(() => {
+    if (rangeUntil === 'now') {
+      const intervalId = setInterval(() => {
+        setTickRangeEnd(now())
+      }, tickIntervalMs);
+      return () => {
+        clearInterval(intervalId);
+      }
+    }
+  }, [rangeUntil, tickIntervalMs]);
+
   // Get the sum of values in each timeseries entry
   const metricsSums = timeseries.map(metrics => keys.reduce((sum, key) => sum + metrics[key], 0))
 
@@ -103,6 +116,7 @@ export default function Graph ({ timeseries, isLoading, keys = ['value'], colors
     let newRangeUntil = currentRangeUntil + (((rangeDuration * factor) - rangeDuration) / 2)
     newRangeUntil = Math.min(newRangeUntil, now())
     setRangeUntil(newRangeUntil >= now() ? 'now' : newRangeUntil)
+    setTickRangeEnd(Math.min(newRangeUntil, now()))
 
     let newRangeDuration = rangeDuration * factor
     newRangeDuration = Math.min(newRangeDuration, newRangeUntil - firstTimestamp)
@@ -114,14 +128,13 @@ export default function Graph ({ timeseries, isLoading, keys = ['value'], colors
   const tickContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // If the range is locked to 'now', smoothly scroll the graph forward in time
-    // by animating the viewBox
+    // If the range is locked to 'now', smoothly scroll the graph forward in time.
+    // These intermediate animation frames are considered 'outside' the React component's
+    // state (like CSS animation) and thus DOM attributes are set directly. This avoids
+    // re-rendering with React on every frame.
     if (rangeUntil === 'now') {
       let animationFrameId = requestAnimationFrame(function callback (timestamp) {
-        if (svgRef.current) {
-          // A Ref is used to directly set the DOM attribute to avoid thrashing React rendering
-          svgRef.current.setAttribute('viewBox', getViewBox())
-        }
+        svgRef.current?.setAttribute('viewBox', getViewBox())
         if (tickContainerRef.current && tickRangeEndRef.current) {
           tickContainerRef.current.style.transform = `translateX(${((tickRangeEndRef.current - now()) / rangeDuration) * 100}%)`
         }
@@ -148,6 +161,7 @@ export default function Graph ({ timeseries, isLoading, keys = ['value'], colors
       draggedRangeUntil -= rangeDuration * deltaXRatio
       draggedRangeUntil = Math.max(draggedRangeUntil, firstTimestamp + rangeDuration)
       setRangeUntil(draggedRangeUntil >= now() ? 'now' : draggedRangeUntil)
+      setTickRangeEnd(Math.min(draggedRangeUntil, now()))
       lastPageX = event.pageX
     }
     window.addEventListener('mousemove', onMousemove)
