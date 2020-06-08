@@ -5,7 +5,7 @@ import { makeStyles } from '@material-ui/core/styles'
 export const useStyles = makeStyles({
   root: {
     width: '40rem',
-    height: '2.8rem',
+    height: '2.8rem', // Fixed height to match loading indicator size and to avoid layout shifts
     maxWidth: '70%',
     marginBottom: '1rem',
     flexGrow: 0,

@@ -23,7 +23,7 @@ export default function OverviewPage () {
         </div>
         <label>Active users</label>
       </div>
-      <Graph data={activeUsersTimeseries} isLoading={isLoadingMetrics} />
+      <Graph timeseries={activeUsersTimeseries} isLoading={isLoadingMetrics} />
     </div>
   )
 }

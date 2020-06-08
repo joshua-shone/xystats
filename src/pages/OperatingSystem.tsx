@@ -32,7 +32,7 @@ export default function OperatingSystemPage () {
         />
       }
       <Graph
-        data={osTimeseries}
+        timeseries={osTimeseries}
         isLoading={isLoadingMetrics}
         keys={['Linux', 'Macintosh', 'Windows']}
         colors={colors}

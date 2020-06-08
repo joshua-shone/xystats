@@ -32,7 +32,7 @@ export default function BrowsersPage () {
         />
       }
       <Graph
-        data={browsersTimeseries}
+        timeseries={browsersTimeseries}
         isLoading={isLoadingMetrics}
         keys={['Chrome', 'Firefox', 'Safari']}
         colors={colors}

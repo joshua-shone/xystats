@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 
+import GraphPaths from './GraphPaths';
+
 import { Metrics } from '../types/metrics'
 
 import { makeStyles } from '@material-ui/core/styles'
@@ -8,7 +10,6 @@ import { useStyles as useLoadingIndicatorStyles } from './LoadingIndicator';
 import { solarizedPalette } from './theme'
 
 const DEFAULT_GRAPH_RANGE_MS = 5 * 60 * 1000
-const POLLING_INTERVAL_MS = 10000
 
 const MAX_TICK_COUNT = 10
 const TICK_INTERVALS_MS = [5000, 10000, 30000, 60000, 60000 * 5, 60000 * 10]
@@ -25,11 +26,6 @@ const useStyles = makeStyles({
   svg: {
     flexGrow: 1
   },
-  path: {
-    fill: 'none',
-    strokeWidth: POLLING_INTERVAL_MS * 0.75,
-    transform: 'scaleY(-1) translateY(-100%)' // Flip vertically so a Y value of zero appears on the bottom
-  },
   tickContainer: {
     height: '1.1rem',
     position: 'relative'
@@ -40,44 +36,22 @@ const useStyles = makeStyles({
   }
 })
 
-interface GraphProps {
-  data: Metrics[],
+interface Props {
+  timeseries: Metrics[],
   isLoading: boolean,
   keys?: string[],
   colors?: string[],
 }
 
-export default function Graph ({ data, isLoading, keys = ['value'], colors = [solarizedPalette.base0] }: GraphProps) {
+export default function Graph ({ timeseries, isLoading, keys = ['value'], colors = [solarizedPalette.base0] }: Props) {
   const classes = useStyles()
   const loadingIndicatorClasses = useLoadingIndicatorStyles();
 
-  const firstTimestamp = data.length > 0 ? data[0].timestamp : 0;
+  const firstTimestamp = timeseries.length > 0 ? timeseries[0].timestamp : 0;
 
   // View ranges
   const [rangeDuration, setRangeDuration] = useState(DEFAULT_GRAPH_RANGE_MS)
   const [rangeUntil, setRangeUntil] = useState<number | 'now'>('now')
-
-  // Add up values in each entry to get stack segment positions
-  const stacks = data.map(entry => {
-    let y = 0
-    return keys.map(key => [y, y += (entry[key] || 0)]) // eslint-disable-line no-return-assign
-  })
-
-  // Map stacks to SVG paths
-  // Each key is given a separate path so it can be assigned its own color
-  const paths = keys.map((key, keyIndex) => (
-    <path
-      className={classes.path}
-      key={key}
-      stroke={colors[keyIndex]}
-      d={
-        stacks.map((stack, index) =>
-          `M${data[index].timestamp - firstTimestamp},${stack[keyIndex][0]} V${stack[keyIndex][1]} `
-        ).join('')
-      }
-    />
-  ))
-  // TODO: Splitting up paths based on a certain duration threshold may improve React reconciliation performance
 
   const tickTimestamps: number[] = []
 
@@ -106,8 +80,12 @@ export default function Graph ({ data, isLoading, keys = ['value'], colors = [so
     </span>
   ))
 
+  // Get the sum of values in each timeseries entry
+  const metricsSums = timeseries.map(metrics => keys.reduce((sum, key) => sum + metrics[key], 0))
+
   // Get the highest point on the graph, to determine the viewBox height
-  const maxValue = Math.max(...stacks.map(stack => stack[keys.length - 1][1]))
+  // TODO: dynamically adjust viewBox height depending on max value in view range
+  const maxValue = Math.max(...metricsSums)
 
   const getViewBox = useCallback(() => {
     const currentRangeUntil = rangeUntil === 'now' ? now() : rangeUntil
@@ -132,6 +110,7 @@ export default function Graph ({ data, isLoading, keys = ['value'], colors = [so
   }
 
   const svgRef = useRef<SVGSVGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const tickContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -158,10 +137,10 @@ export default function Graph ({ data, isLoading, keys = ['value'], colors = [so
 
   function onMouseDown (event) {
     event.preventDefault()
-    if (svgRef.current === null) {
+    if (containerRef.current === null) {
       return
     }
-    const boundingRect = svgRef.current.getBoundingClientRect()
+    const boundingRect = containerRef.current.getBoundingClientRect()
     let draggedRangeUntil = rangeUntil === 'now' ? now() : rangeUntil
     let lastPageX = event.pageX
     function onMousemove (event) {
@@ -169,8 +148,6 @@ export default function Graph ({ data, isLoading, keys = ['value'], colors = [so
       draggedRangeUntil -= rangeDuration * deltaXRatio
       draggedRangeUntil = Math.max(draggedRangeUntil, firstTimestamp + rangeDuration)
       setRangeUntil(draggedRangeUntil >= now() ? 'now' : draggedRangeUntil)
-      // TODO: calling setRangeUntil() here causes a re-render (and rebuild of the graph) on every
-      // mouse move event, which is quite inefficient. Need to find a way to update the viewBox cheaply..
       lastPageX = event.pageX
     }
     window.addEventListener('mousemove', onMousemove)
@@ -180,17 +157,15 @@ export default function Graph ({ data, isLoading, keys = ['value'], colors = [so
   }
 
   return (
-    <div className={classes.root}>
+    <div className={classes.root} ref={containerRef} onWheel={onWheel} onMouseDown={onMouseDown}>
       {isLoading ? <div className={loadingIndicatorClasses.root}></div> :
         <svg
           className={classes.svg}
+          ref={svgRef}
           viewBox={getViewBox()}
           preserveAspectRatio='none'
-          ref={svgRef}
-          onWheel={onWheel}
-          onMouseDown={onMouseDown}
         >
-          {paths}
+          <GraphPaths timeseries={timeseries} keys={keys} colors={colors}/>
         </svg>
       }
       <div ref={tickContainerRef} className={classes.tickContainer}>
