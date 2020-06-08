@@ -94,7 +94,7 @@ export default function Graph ({ timeseries, isLoading, keys = ['value'], colors
   }, [rangeUntil, tickIntervalMs]);
 
   // Get the sum of values in each timeseries entry
-  const metricsSums = timeseries.map(metrics => keys.reduce((sum, key) => sum + metrics[key], 0))
+  const metricsSums = timeseries.map(metrics => keys.reduce((sum, key) => sum + (metrics[key] || 0), 0))
 
   // Get the highest point on the graph, to determine the viewBox height
   // TODO: dynamically adjust viewBox height depending on max value in view range
