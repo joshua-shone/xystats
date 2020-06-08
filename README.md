@@ -48,7 +48,7 @@ It also implements a snapping behavior, whereby if the viewing range is scrolled
 - [x] Implement graph ticks (time labels)
 - [ ] Graph tooltips
 - [ ] Dynamically switch to a line graph when zoomed out enough
-- [ ] Implement proper loading states (pulsing style)
+- [x] Implement proper loading states (pulsing style)
 - [ ] Show server-side errors and data discontinuities.
 - [ ] Investigate mobile layout
 - [ ] Cross-browser testing with BrowserStack
